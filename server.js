@@ -43,14 +43,10 @@ app.post("/register", async (req, res) => {
     const password = req.body.password;
     const password2 = req.body.password2;
 
-    console.log({
-        name,
-        email,
-        password,
-        password2,
-    });
+
 
     let errors = [];
+    let successes = [];
 
     if (!name || !email || !password || !password2) {
         errors.push({ message: "Por favor preencha todos os campos." })
@@ -59,17 +55,16 @@ app.post("/register", async (req, res) => {
         if (password.length < 6) {
             errors.push({ message: "Por favor escolha um senha maior que 6 caracteres" })
         }
-        else{
+        else {
             if (password != password2) {
                 errors.push({ message: "As senhas não coincidem" })
             }
         }
     }
     if (errors.length > 0) {
-        res.json({ errors })
+        res.send({ errors })
     } else {
         let hashedPassword = await bcrypt.hash(password, 10);
-        console.log(hashedPassword);
 
         pool.query(
             `SELECT * FROM users
@@ -77,23 +72,26 @@ app.post("/register", async (req, res) => {
             if (err) {
                 throw err;
             }
-            console.log(results.rows);
             if (results.rows.length > 0) {
                 errors.push({ message: "Email já cadastrado" });
-                res.render("signIn", { errors });
+                res.send({ errors });
             } else {
                 pool.query(
                     `INSERT INTO users (name, email, password)
                         VALUES ($1, $2, $3)
-                        RETURNING id, password`,
+                        RETURNING id`,
                     [name, email, hashedPassword], (err, results) => {
                         if (err) {
                             throw err;
                         }
                         console.log(results.rows);
-                        req.flash("success_msg", "Sua conta foi criada, por favor realize o login");
-                        res.redirect("/login");
+                        if (results.rows.length > 0) {
+                            successes.push({ message: "Sua conta foi criada, por favor realize o login" });
+                            res.send({ successes });
+                        }
+                        
                     }
+                    
                 );
             }
         }
