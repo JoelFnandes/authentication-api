@@ -86,12 +86,13 @@ app.post("/register", async (req, res) => {
                         }
                         console.log(results.rows);
                         if (results.rows.length > 0) {
-                            successes.push({ message: "Sua conta foi criada, por favor realize o login" });
+                            successes.push({ message: "Sua conta foi criada, por favor realize o login." });
                             res.send({ successes });
+
                         }
-                        
+
                     }
-                    
+
                 );
             }
         }
@@ -100,20 +101,36 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+    let errors = [];
+    let successes = [];
     const email = req.body.email;
     const password = await bcrypt.hash(req.body.password, 10);
-
-    pool.query(`SELECT * FROM users
-    WHERE email, password = $1`, [email, password])
     if (!email || !password) {
         errors.push({ message: "Por favor preencha todos os campos." })
+        res.send({ errors });
     }
-
-    console.log({
-        email,
-        password
-    });
-
+    else {
+        pool.query(`SELECT * FROM users WHERE email = $1`, [email], (err, results) => {
+            if (err) {
+                throw err;
+            }
+            console.log(results.rows);  
+            if (results.rows.length > 0) {
+                const user = results.rows[0];
+                bcrypt.compare(password, user.password, (err, isMatch) =>{
+                if(err){
+                    throw err;
+                }
+                if(isMatch){
+                    return done(null, user);
+                    isMatch.send(user);
+                }
+                // successes.push({ message: "Autenticado" });
+                // res.send({ successes });
+                });
+            }
+        });
+    }
 });
 
 app.listen(PORT, () => {
